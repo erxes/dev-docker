@@ -1,4 +1,4 @@
-# Docker installation guide
+# Docker development guide
 
 2. Run ```./install.sh``` and answer y to all questions
 
