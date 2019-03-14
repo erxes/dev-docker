@@ -54,6 +54,7 @@ cd ..
 echo "Replacing erxes-widgets-api .envs"
 cd erxes-widgets-api
 sed -i '' 's/mongodb:\/\/localhost/mongodb:\/\/mongo/g' .env
+sed -i '' 's/localhost:3300/erxes-api:3300/g' .env
 cd ..
 
 read -p "Run docker-compose up (y/n): " dcuAnswer 
