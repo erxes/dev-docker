@@ -1,13 +1,55 @@
 version: '3'
 services:
   mongo:
-    image: "mongo"
-    container_name: "mongo"
+    hostname: mongo
+    image: mongo
+    container_name: mongo
+    ports:
+      - "127.0.0.1:27017:27017"
+    networks:
+      - erxes-net
     volumes:
       - ./data/db:/data/db
+    command: "--bind_ip_all --replSet rs0"
 
   redis:
     image: 'redis'
+    container_name: redis
+    networks:
+      - erxes-net
+
+  rabbitmq:
+    image: rabbitmq:3.7.17-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    hostname: rabbitmq
+    ports:
+      - "127.0.0.1:15672:15672"
+    networks:
+      - erxes-net
+    # RabbitMQ data will be saved into ./rabbitmq-data folder.
+    volumes:
+      - ./rabbitmq-data:/var/lib/rabbitmq
+
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:7.5.2"
+    container_name: "elasticsearch"
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "127.0.0.1:9200:9200"
+    networks:
+      - erxes-net
+    volumes:
+      - ./elasticsearchData:/usr/share/elasticsearch/data
+
+  kibana:
+    image: "docker.elastic.co/kibana/kibana:7.5.2"
+    container_name: "kibana"
+    ports:
+      - "127.0.0.1:5601:5601"
+    networks:
+      - erxes-net
 
   erxes-api:
     container_name: "erxes-api"
@@ -23,67 +65,27 @@ services:
     depends_on:
       - "mongo"
       - "redis"
+      - "rabbitmq"
+      - "elasticsearch"
     ports:
       - '3300:3300'
-    command: ["./wait-for.sh", "mongo:27017", "--", "yarn", "dev"]
+    networks:
+      - erxes-net
 
-  erxes-widgets-api:
-    container_name: "erxes-widgets-api"
-    build:
-      dockerfile: ./Dockerfile.dev
-      context: ../erxes-widgets-api
-    volumes:
-      - /erxes-widgets-api/node_modules
-      - /erxes-widgets-api/.git
-      - ../erxes-widgets-api/:/erxes-widgets-api
+  elksyncer:
+    image: "elksyncer"
+    container_name: "elksyncer"
     env_file:
-      ../erxes-widgets-api/.env
+      ../erxes-api/elkSyncer/.env
     depends_on:
-      - "erxes-api"
-    ports:
-      - '3100:3100'
-    command: ["./wait-for.sh", "mongo:27017", "--", "yarn", "dev"]
-
-  erxes:
-    container_name: "erxes"
-    build:
-      dockerfile: ./Dockerfile.dev
-      context: ../erxes
+      - "mongo"
+      - "elasticsearch"
     volumes:
-      - /erxes/node_modules
-      - /erxes/.git
-      - ../erxes:/erxes
-    env_file:
-      ../erxes/.env
-    ports:
-      - '3000:3000'
-    depends_on:
-      - "erxes-api"
+      - ../erxes-api/elkSyncer:/elkSyncer
+    command: ["./wait-for.sh", "elasticsearch:9200", "--", "python", "main.py"]
+    networks:
+      - erxes-net
 
-  erxes-widgets:
-    container_name: "erxes-widgets"
-    build:
-      dockerfile: ./Dockerfile.dev
-      context: ../erxes-widgets
-    volumes:
-      - /erxes-widgets/node_modules
-      - /erxes-widgets/.git
-      - ../erxes-widgets:/erxes-widgets
-    env_file:
-      ../erxes-widgets/.env
-    ports:
-      - '3200:3200'
-    depends_on:
-      - "erxes-widgets-api"
-
-  nginx:
-    container_name: "nginx"
-    build:
-      context: ./nginx
-    ports:
-      - '80:80'
-    depends_on:
-      - "erxes"
-      - "erxes-api"
-      - "erxes-widgets-api"
-      - "erxes-widgets"
+networks:
+  erxes-net:
+    driver: bridge

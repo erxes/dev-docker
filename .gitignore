@@ -1,6 +1,8 @@
 node_modules
 dist
 data
+elasticsearchData
+rabbitmq-data
 static
 .DS_Store
 npm-debug.log*
