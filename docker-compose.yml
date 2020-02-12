@@ -82,7 +82,7 @@ services:
       - "elasticsearch"
     volumes:
       - ../erxes-api/elkSyncer:/elkSyncer
-    command: ["./wait-for.sh", "elasticsearch:9200", "--", "python", "main.py"]
+    command: bash -c "./wait-for.sh -t 60 mongo:27017 && ./wait-for.sh -t 60 elasticsearch:9200 && python main.py"
     networks:
       - erxes-net
 
