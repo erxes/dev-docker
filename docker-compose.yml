@@ -8,13 +8,20 @@ services:
       - "127.0.0.1:27017:27017"
     networks:
       - erxes-net
+    healthcheck:
+      test: test $$(echo "rs.initiate().ok || rs.status().ok" | mongo --quiet) -eq 1
+      interval: 2s
+      timeout: 2s
+      retries: 200
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - ./data/db:/data/db
-    command: "--bind_ip_all --replSet rs0"
 
   redis:
     image: 'redis'
     container_name: redis
+    ports:
+      - "127.0.0.1:6379:6379"
     networks:
       - erxes-net
 
@@ -73,8 +80,10 @@ services:
       - erxes-net
 
   elksyncer:
-    image: "elksyncer"
     container_name: "elksyncer"
+    build:
+       dockerfile: ./Dockerfile
+       context: ../erxes-api/elkSyncer
     env_file:
       ../erxes-api/elkSyncer/.env
     depends_on:
@@ -82,7 +91,26 @@ services:
       - "elasticsearch"
     volumes:
       - ../erxes-api/elkSyncer:/elkSyncer
-    command: bash -c "./wait-for.sh -t 60 mongo:27017 && ./wait-for.sh -t 60 elasticsearch:9200 && python main.py"
+    tty: true
+    command: ["bash"]
+    networks:
+      - erxes-net
+
+  erxes-widgets:
+    container_name: "erxes-widgets"
+    build:
+      dockerfile: ./Dockerfile.dev
+      context: ../erxes/widgets
+    volumes:
+      - /erxes-widgets/node_modules
+      - /erxes-widgets/.git
+      - ../erxes/widgets/:/erxes-widgets
+    env_file:
+      ../erxes/widgets/.env
+    ports:
+      - '3200:3200'
+    depends_on: 
+      - erxes-api
     networks:
       - erxes-net
 
