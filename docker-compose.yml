@@ -32,6 +32,7 @@ services:
     hostname: rabbitmq
     ports:
       - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5672:5672"
     networks:
       - erxes-net
     # RabbitMQ data will be saved into ./rabbitmq-data folder.
@@ -43,6 +44,13 @@ services:
     container_name: "elasticsearch"
     environment:
       - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 32768
+        hard: 65536
     ports:
       - "127.0.0.1:9200:9200"
     networks:
@@ -53,29 +61,10 @@ services:
   kibana:
     image: "docker.elastic.co/kibana/kibana:7.5.2"
     container_name: "kibana"
-    ports:
-      - "127.0.0.1:5601:5601"
-    networks:
-      - erxes-net
-
-  erxes-api:
-    container_name: "erxes-api"
-    build:
-      dockerfile: ./Dockerfile.dev
-      context: ../erxes-api
-    volumes:
-      - /erxes-api/node_modules
-      - /erxes-api/.git
-      - ../erxes-api/:/erxes-api
-    env_file:
-      ../erxes-api/.env
     depends_on:
-      - "mongo"
-      - "redis"
-      - "rabbitmq"
       - "elasticsearch"
     ports:
-      - '3300:3300'
+      - "127.0.0.1:5601:5601"
     networks:
       - erxes-net
 
@@ -83,36 +72,53 @@ services:
     container_name: "elksyncer"
     build:
        dockerfile: ./Dockerfile
-       context: ../erxes-api/elkSyncer
+       context: ../erxes/elkSyncer
     env_file:
-      ../erxes-api/elkSyncer/.env
+      ../erxes/elkSyncer/.env
     depends_on:
       - "mongo"
       - "elasticsearch"
     volumes:
-      - ../erxes-api/elkSyncer:/elkSyncer
+      - ./mongoConnectorLog:/var/log/mongo-connector
     tty: true
-    command: ["bash"]
     networks:
       - erxes-net
 
-  erxes-widgets:
-    container_name: "erxes-widgets"
-    build:
-      dockerfile: ./Dockerfile.dev
-      context: ../erxes/widgets
-    volumes:
-      - /erxes-widgets/node_modules
-      - /erxes-widgets/.git
-      - ../erxes/widgets/:/erxes-widgets
-    env_file:
-      ../erxes/widgets/.env
-    ports:
-      - '3200:3200'
-    depends_on: 
-      - erxes-api
-    networks:
-      - erxes-net
+  # elksyncer:
+  #   container_name: 'elksyncer'
+  #   build:
+  #     dockerfile: ./Dockerfile
+  #     context: ../../erxes-saas/erxes/elkSyncer
+  #   env_file:
+  #     ../../erxes-saas/erxes/elkSyncer/.env
+  #   depends_on:
+  #     - 'mongo'
+  #     - 'elasticsearch'
+  #   networks:
+  #     - erxes-net
+
+  # erxes-api-check:
+  #   image: registry.erxes.io/erxes-enterprise/erxes-api:golomt
+  #   container_name: erxes-api
+  #   restart: unless-stopped
+  #   environment:
+  #     PORT: "3300"
+  #     NODE_ENV: production
+  #     DEBUG: "erxes-api:*"
+  #     MAIN_APP_DOMAIN: http://localhost:3000
+  #     INTEGRATIONS_API_DOMAIN: http://localhost:3400
+  #     LOGS_API_DOMAIN: http://localhost:3800
+  #     MONGO_URL: mongodb://mongo/erxes
+  #     ELASTICSEARCH_URL: http://elasticsearch:9200
+  #     RABBITMQ_HOST: "amqp://rabbitmq"
+  #     MESSAGE_BROKER_PREFIX: "1"
+  #     JWT_TOKEN_SECRET: "token"
+  #     DD_SERVICE: ""
+  #     DD_HOST: ""
+  #   ports:
+  #     - "127.0.0.1:3300:3300"
+  #   networks:
+  #     - erxes-net
 
 networks:
   erxes-net:

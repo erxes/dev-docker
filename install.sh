@@ -10,7 +10,7 @@ read -p "Install erxes frontend (y/n): " efAnswer
 if [ "$efAnswer" != "n" ];
   then
     echo 'Installing erxes frontend'
-    curl https://raw.githubusercontent.com/erxes/erxes/develop/scripts/install.sh | sh
+    curl https://raw.githubusercontent.com/erxes/erxes/develop/ui/scripts/install.sh | sh
   else
     echo "Skipping erxes fronted"
 fi
