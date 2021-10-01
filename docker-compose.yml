@@ -72,9 +72,9 @@ services:
     container_name: "elksyncer"
     build:
        dockerfile: ./Dockerfile
-       context: ../erxes/elkSyncer
+       context: ../erxes/erxes/elkSyncer
     env_file:
-      ../erxes/elkSyncer/.env
+      ../erxes/erxes/elkSyncer/.env
     depends_on:
       - "mongo"
       - "elasticsearch"
